@@ -1,3 +1,4 @@
+import { createSession } from "./baking";
 import { describe, expect, it, vi } from "vitest";
 import {
   initialState,
@@ -11,15 +12,16 @@ import {
 } from "./storage";
 describe("persistent progress", () => {
   it("recovers cooking amount, lock, position and completion", () => {
+    const session = {
+      ...createSession(125),
+      current: 4,
+      completed: ["feed", "mix"],
+    };
     const state: SavedState = {
       ...initialState,
       starter: "125",
-      session: {
-        starter: 125,
-        current: 4,
-        completed: ["feed", "mix"],
-        locked: true,
-      },
+      sessions: [session],
+      activeSessionId: session.id,
     };
     expect(saveState(state)).toBe(true);
     expect(loadState()).toEqual(state);
@@ -33,11 +35,11 @@ describe("persistent progress", () => {
       STORAGE_KEY,
       JSON.stringify({
         ...initialState,
-        session: { starter: -1 },
+        sessions: [{ starter: -1 }],
         timers: [null, { id: "invalid" }],
       }),
     );
-    expect(loadState().session).toBeNull();
+    expect(loadState().sessions).toEqual([]);
     expect(loadState().timers).toEqual([]);
   });
   it("reports a write failure instead of claiming to save", () => {

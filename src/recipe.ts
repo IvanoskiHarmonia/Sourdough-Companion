@@ -56,10 +56,12 @@ export type Step = {
   minutes?: number;
   timerLabel?: string;
 };
-export function recipeSteps(starter: number): Step[] {
+export function recipeSteps(starter: number, loafCount?: number): Step[] {
   const r = scaleRecipe(starter);
   const f = feedStarter(starter, "target");
-  const loaf = loafPlan(r.total);
+  const loaf = loafCount
+    ? { count: loafCount, weight: r.total / loafCount }
+    : loafPlan(r.total);
   return [
     {
       id: "feed",

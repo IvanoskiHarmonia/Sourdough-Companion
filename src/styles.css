@@ -2022,3 +2022,87 @@ dialog p {
 :root[data-theme="dark"] .error {
   color: #ffb4a5 !important;
 }
+
+.session-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  margin-bottom: 26px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--pale);
+}
+.session-select {
+  min-width: 0;
+  flex: 1;
+}
+.session-select label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.session-select select {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 10px;
+}
+.session-select p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.bake-name {
+  display: block;
+  font-size: 14px;
+  margin-top: 20px;
+}
+.bake-name input {
+  display: block;
+  width: 100%;
+  margin-top: 9px;
+  padding: 12px;
+  min-height: 48px;
+  font: inherit;
+  font-size: 16px;
+  background: var(--field);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.legacy-progress {
+  margin-top: 20px;
+  font-size: 12px;
+}
+.legacy-progress summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+.legacy-progress div {
+  margin-top: 14px;
+}
+select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .session-switcher {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+  .session-select {
+    flex-basis: 100%;
+  }
+  .session-switcher > button {
+    width: 100%;
+  }
+}

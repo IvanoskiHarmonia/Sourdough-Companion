@@ -64,9 +64,11 @@ test("saves cooking progress, protects quantities, and resets explicitly", async
 });
 
 test("timer deadline survives reload and pause/resume", async ({ page }) => {
-  await page.clock.install({ time: new Date("2026-10-13T12:00:00Z") });
-  await page.clock.pauseAt(new Date("2026-10-13T12:00:00Z"));
+  // install() starts a running clock. Leave more than the test timeout
+  // before the pause target, so setup time cannot put that target in the past.
+  await page.clock.install({ time: new Date("2026-10-13T11:00:00Z") });
   await page.goto("/#timers");
+  await page.clock.pauseAt(new Date("2026-10-13T12:00:00Z"));
   await page.getByRole("button", { name: "Choose a timer" }).click();
   const card = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Initial rest", exact: true }),
@@ -163,4 +165,100 @@ test("screens have no serious accessibility violations in both themes", async ({
       ).toEqual([]);
     }
   }
+});
+
+test("50 g and 100 g bakes keep independent progress, quantities and timers offline", async ({
+  page,
+  context,
+}) => {
+  // install() starts a running clock. Leave more than the test timeout
+  // before the pause target, so setup time cannot put that target in the past.
+  await page.clock.install({ time: new Date("2026-10-13T11:00:00Z") });
+  await page.goto("/");
+  await page.clock.pauseAt(new Date("2026-10-13T12:00:00Z"));
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.getByLabel("How much active starter do you have?").fill("50");
+  await page.getByRole("button", { name: "Let’s bake" }).click();
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByLabel("I’ve completed this step").check();
+  await page.getByRole("button", { name: "Next step" }).click();
+  await expect(page.getByText("145 g", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add bake" }).click();
+  await page.getByLabel("Active starter for this bake").fill("-1");
+  await expect(
+    page.getByRole("button", { name: "Start bake", exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel("Active starter for this bake").fill("100");
+  await page.getByRole("button", { name: "Start bake", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Wake up your starter" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("I’ve completed this step")).not.toBeChecked();
+  await page.getByRole("button", { name: "Start timer" }).click();
+  for (let i = 0; i < 4; i++)
+    await page.getByRole("button", { name: "Next step" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Let the dough rest" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Your bakes")
+    .selectOption({ label: "Bake 1 · 50 g starter · 1/17 complete" });
+  await expect(
+    page.getByRole("heading", { name: "Starter, meet water" }),
+  ).toBeVisible();
+  await expect(page.getByText("145 g", { exact: true })).toBeVisible();
+  await page
+    .getByRole("link", { name: "Recipe calculator", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("How much active starter do you have?"),
+  ).toHaveValue("50");
+  await page
+    .getByLabel("Your bakes")
+    .selectOption({ label: "Bake 2 · 100 g starter · 0/17 complete" });
+  await expect(
+    page.getByLabel("How much active starter do you have?"),
+  ).toHaveValue("100");
+  await expect(page.getByText("290 g", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Cooking mode", exact: true }).click();
+  await context.setOffline(true);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Let the dough rest" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Your timers", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Bake 1 · Starter activation" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Bake 2 · Starter activation" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Pause Bake 1 · Starter activation" })
+    .click();
+  await page.clock.fastForward(60000);
+  await expect(page.getByText("04:00:00", { exact: true })).toBeVisible();
+  await expect(page.getByText("03:59:00", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Cooking mode", exact: true }).click();
+  await page.getByRole("button", { name: "Reset baking session" }).click();
+  await page
+    .getByRole("button", { name: "Reset session", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("How much active starter do you have?"),
+  ).toHaveValue("50");
+  await page.getByRole("button", { name: "Continue baking" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Starter, meet water" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Your timers", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Bake 1 · Starter activation" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Bake 2 · Starter activation" }),
+  ).toHaveCount(0);
+  await context.setOffline(false);
 });

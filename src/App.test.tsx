@@ -46,7 +46,7 @@ describe("baking screens", () => {
     await user.click(screen.getByRole("button", { name: "Next step" }));
     await waitFor(() =>
       expect(
-        JSON.parse(localStorage.getItem(STORAGE_KEY)!).session,
+        JSON.parse(localStorage.getItem(STORAGE_KEY)!).sessions[0],
       ).toMatchObject({ current: 1, completed: ["feed"], locked: true }),
     );
     view.unmount();
@@ -62,6 +62,7 @@ describe("baking screens", () => {
       STORAGE_KEY,
       JSON.stringify({
         ...initialState,
+        version: 1,
         session: { starter: 250, current: 0, completed: [], locked: true },
       }),
     );
@@ -75,7 +76,7 @@ describe("baking screens", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "150" } });
     await waitFor(() =>
       expect(
-        JSON.parse(localStorage.getItem(STORAGE_KEY)!).session.starter,
+        JSON.parse(localStorage.getItem(STORAGE_KEY)!).sessions[0].starter,
       ).toBe(150),
     );
   });

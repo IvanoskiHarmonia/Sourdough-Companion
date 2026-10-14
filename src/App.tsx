@@ -12,12 +12,23 @@ import {
 } from "./recipe";
 import {
   loadState,
+  activeSession,
+  updateActive,
+  removeActive,
   remainingTime,
   saveState,
   timerText,
   type SavedState,
   type Timer,
 } from "./storage";
+
+import {
+  bakeProgress,
+  createSession,
+  navigateStep,
+  scopedStep,
+  timerSteps,
+} from "./baking";
 
 type Page = "home" | "feeding" | "recipe" | "cooking" | "timers";
 const nav: { id: Page; label: string; short: string; icon: IconName }[] = [
@@ -249,7 +260,11 @@ export default function App() {
   const [saveError, setSaveError] = useState(false);
   const [offlineAvailable, setOfflineAvailable] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
-  const [modal, setModal] = useState<"reset" | "install" | null>(null);
+  const [modal, setModal] = useState<"reset" | "install" | "new-bake" | null>(
+    null,
+  );
+  const [newStarter, setNewStarter] = useState("100");
+  const [newName, setNewName] = useState("");
   const [notice, setNotice] = useState("");
   const [permission, setPermission] = useState(() =>
     "Notification" in window ? Notification.permission : "denied",
@@ -360,29 +375,54 @@ export default function App() {
     window.location.hash = next;
     setPage(next);
   };
+  const selectedSession = activeSession(state);
   const inputAmount = parseAmount(state.starter);
-  const amount = state.session?.locked ? state.session.starter : inputAmount;
+  const amount = selectedSession?.locked
+    ? selectedSession.starter
+    : inputAmount;
   const recipe = amount === null ? null : scaleRecipe(amount);
-  const steps = recipeSteps(state.session?.starter ?? amount ?? 250);
+  const steps = recipeSteps(
+    selectedSession?.starter ?? amount ?? 250,
+    selectedSession?.legacyLoaves?.length,
+  );
+  const availableTimers = timerSteps(steps, selectedSession);
+  const progress = selectedSession ? bakeProgress(selectedSession) : null;
   const running = state.timers.filter((t) => t.status === "running").length;
-  const complete = state.session?.completed.length === steps.length;
+  const complete = progress !== null && progress.completed === progress.total;
   const setStarter = (value: string) =>
     setState((s) => ({
-      ...s,
+      ...updateActive(s, (session) =>
+        !session.locked && parseAmount(value) !== null
+          ? { ...session, starter: parseAmount(value)! }
+          : session,
+      ),
       starter: value,
-      session:
-        s.session && !s.session.locked && parseAmount(value) !== null
-          ? { ...s.session, starter: parseAmount(value)! }
-          : s.session,
     }));
+  const addBake = (starter: number, name: string) => {
+    const session = createSession(starter, name);
+    setState((s) => ({
+      ...s,
+      sessions: [...s.sessions, session],
+      activeSessionId: session.id,
+      starter: String(starter),
+    }));
+    setModal(null);
+    go("cooking");
+  };
+  const nextBakeName = () => {
+    let number = 1;
+    while (state.sessions.some((s) => s.name === `Bake ${number}`)) number++;
+    return `Bake ${number}`;
+  };
+  const openNewBake = () => {
+    setNewName(nextBakeName());
+    setNewStarter("100");
+    setModal("new-bake");
+  };
   const begin = () => {
     if (amount === null) return;
-    if (!state.session)
-      setState((s) => ({
-        ...s,
-        session: { starter: amount, current: 0, completed: [], locked: true },
-      }));
-    go("cooking");
+    if (!selectedSession) addBake(amount, nextBakeName());
+    else go("cooking");
   };
   const startTimer = (step: Step, minutes: number) =>
     setState((s) => ({
@@ -562,6 +602,39 @@ export default function App() {
               </button>
             </div>
           )}
+          {state.sessions.length > 0 && page !== "feeding" && (
+            <section className="session-switcher" aria-label="Baking sessions">
+              <div className="session-select">
+                <label htmlFor="active-bake">Your bakes</label>
+                <select
+                  id="active-bake"
+                  value={state.activeSessionId ?? ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setState((s) => ({
+                      ...s,
+                      activeSessionId: id,
+                      starter: String(
+                        s.sessions.find((b) => b.id === id)!.starter,
+                      ),
+                    }));
+                  }}
+                >
+                  {state.sessions.map((bake) => (
+                    <option key={bake.id} value={bake.id}>
+                      {bake.name} · {grams(bake.starter)} starter ·{" "}
+                      {bake.completed.length}/{steps.length} complete
+                    </option>
+                  ))}
+                </select>
+                <p>Each bake has its own recipe, progress, and timers.</p>
+              </div>
+              <button className="secondary" onClick={openNewBake}>
+                <Icon name="plus" size={18} />
+                Add bake
+              </button>
+            </section>
+          )}
           {page === "home" && (
             <>
               <section className="hero">
@@ -603,18 +676,18 @@ export default function App() {
                     id="starter"
                     label="How much active starter do you have?"
                     value={
-                      state.session?.locked
-                        ? String(state.session.starter)
+                      selectedSession?.locked
+                        ? String(selectedSession.starter)
                         : state.starter
                     }
                     setValue={setStarter}
-                    disabled={!!state.session?.locked}
+                    disabled={!!selectedSession?.locked}
                   />
                   <div className="quick-amounts">
                     {[125, 150, 250, 500].map((g) => (
                       <button
                         key={g}
-                        disabled={!!state.session?.locked}
+                        disabled={!!selectedSession?.locked}
                         className={amount === g ? "selected" : ""}
                         onClick={() => setStarter(String(g))}
                       >
@@ -643,8 +716,12 @@ export default function App() {
                     {recipe && (
                       <span className="loaf-count">
                         <Icon name="bread" size={18} />
-                        {loafPlan(recipe.total).count}{" "}
-                        {loafPlan(recipe.total).count === 1 ? "loaf" : "loaves"}
+                        {selectedSession?.legacyLoaves?.length ??
+                          loafPlan(recipe.total).count}{" "}
+                        {(selectedSession?.legacyLoaves?.length ??
+                          loafPlan(recipe.total).count) === 1
+                          ? "loaf"
+                          : "loaves"}
                       </span>
                     )}
                   </div>
@@ -696,19 +773,19 @@ export default function App() {
                     </span>
                     <div>
                       <h3>
-                        {state.session
+                        {selectedSession
                           ? "Your bake is right where you left it."
                           : "Apron on? Let’s make some bread."}
                       </h3>
                       <p>
-                        {state.session
-                          ? `${state.session.completed.length} of ${steps.length} steps complete · automatically saved`
+                        {selectedSession
+                          ? `${progress!.completed} of ${progress!.total} steps complete · automatically saved`
                           : "We’ll take it one step at a time, from the first mix to the first slice."}
                       </p>
                     </div>
                   </div>
                   <button className="primary" onClick={begin}>
-                    {state.session ? "Continue baking" : "Let’s bake"}
+                    {selectedSession ? "Continue baking" : "Let’s bake"}
                     <Icon name="arrow" size={19} />
                   </button>
                 </div>
@@ -873,12 +950,18 @@ export default function App() {
                     </span>
                     <span>
                       <Icon name="bread" />
-                      {loafPlan(recipe.total).count}{" "}
-                      {loafPlan(recipe.total).count === 1 ? "loaf" : "loaves"} ·{" "}
-                      {grams(recipe.total)} dough
+                      {selectedSession?.legacyLoaves?.length ??
+                        loafPlan(recipe.total).count}{" "}
+                      {(selectedSession?.legacyLoaves?.length ??
+                        loafPlan(recipe.total).count) === 1
+                        ? "loaf"
+                        : "loaves"}{" "}
+                      · {grams(recipe.total)} dough
                     </span>
                     <button className="primary" onClick={begin}>
-                      {state.session ? "Continue baking" : "Start cooking mode"}
+                      {selectedSession
+                        ? "Continue baking"
+                        : "Start cooking mode"}
                       <Icon name="arrow" size={18} />
                     </button>
                   </div>
@@ -897,7 +980,10 @@ export default function App() {
                             : "Bake, cool & enjoy"}
                         </h2>
                       </div>
-                      {recipeSteps(recipe.starter).map(
+                      {recipeSteps(
+                        recipe.starter,
+                        selectedSession?.legacyLoaves?.length,
+                      ).map(
                         (step, index) =>
                           step.day === day && (
                             <article className="recipe-step" key={step.id}>
@@ -944,7 +1030,7 @@ export default function App() {
                 "Let’s bake something lovely.",
                 "Your recipe, your pace. We’ll remember where you left off.",
               )}
-              {!state.session ? (
+              {!selectedSession ? (
                 <section className="card empty-session">
                   <Icon name="chef" size={54} />
                   <h2>Ready when you are.</h2>
@@ -963,20 +1049,24 @@ export default function App() {
                 </section>
               ) : (
                 (() => {
-                  const session = state.session;
-                  const step = steps[session.current];
+                  const session = selectedSession;
+                  const track = session;
+                  const baseStep = steps[session.current];
+                  const step = scopedStep(baseStep, session);
+                  const trackPosition = session.current + 1;
+                  const trackLength = steps.length;
                   return (
                     <div className="cooking-layout">
                       <section className="cooking-main">
                         <div className="progress-header">
                           <span>
-                            STEP {session.current + 1} OF {steps.length}
+                            STEP {trackPosition} OF {trackLength}
                           </span>
-                          <span>{session.completed.length} complete</span>
+                          <span>{progress!.completed} complete</span>
                         </div>
                         <progress
-                          max={steps.length}
-                          value={session.completed.length}
+                          max={progress!.total}
+                          value={progress!.completed}
                           aria-label="Baking progress"
                         />
                         <article className="card cooking-card">
@@ -986,14 +1076,14 @@ export default function App() {
                               {step.day === 1 ? "MIX & REST" : "BAKE & ENJOY"}
                             </span>
                             <span className="large-step">
-                              {String(session.current + 1).padStart(2, "0")}
+                              {String(trackPosition).padStart(2, "0")}
                             </span>
                           </div>
                           <Icon
                             name={
                               step.minutes
                                 ? "timer"
-                                : step.id === "feed"
+                                : baseStep.id === "feed"
                                   ? "jar"
                                   : "bread"
                             }
@@ -1028,19 +1118,18 @@ export default function App() {
                           <label className="completion">
                             <input
                               type="checkbox"
-                              checked={session.completed.includes(step.id)}
+                              checked={track.completed.includes(baseStep.id)}
                               onChange={(e) =>
-                                setState((s) => ({
-                                  ...s,
-                                  session: {
-                                    ...s.session!,
+                                setState((s) =>
+                                  updateActive(s, (current) => ({
+                                    ...current,
                                     completed: e.target.checked
-                                      ? [...s.session!.completed, step.id]
-                                      : s.session!.completed.filter(
-                                          (id) => id !== step.id,
+                                      ? [...track.completed, baseStep.id]
+                                      : track.completed.filter(
+                                          (id) => id !== baseStep.id,
                                         ),
-                                  },
-                                }))
+                                  })),
+                                )
                               }
                             />
                             <span>I’ve completed this step</span>
@@ -1051,13 +1140,11 @@ export default function App() {
                             className="secondary"
                             disabled={session.current === 0}
                             onClick={() =>
-                              setState((s) => ({
-                                ...s,
-                                session: {
-                                  ...s.session!,
-                                  current: s.session!.current - 1,
-                                },
-                              }))
+                              setState((s) =>
+                                updateActive(s, (current) =>
+                                  navigateStep(current, -1),
+                                ),
+                              )
                             }
                           >
                             <span className="back-arrow">
@@ -1069,13 +1156,11 @@ export default function App() {
                             className="primary"
                             disabled={session.current === steps.length - 1}
                             onClick={() =>
-                              setState((s) => ({
-                                ...s,
-                                session: {
-                                  ...s.session!,
-                                  current: s.session!.current + 1,
-                                },
-                              }))
+                              setState((s) =>
+                                updateActive(s, (current) =>
+                                  navigateStep(current, 1),
+                                ),
+                              )
                             }
                           >
                             Next step
@@ -1087,10 +1172,7 @@ export default function App() {
                             <Icon name="bread" size={32} />
                             <h2>You made something wonderful.</h2>
                             <p>All steps complete. Enjoy your bread!</p>
-                            <button
-                              className="secondary"
-                              onClick={() => setModal("reset")}
-                            >
+                            <button className="secondary" onClick={openNewBake}>
                               Start a new bake
                             </button>
                           </div>
@@ -1104,6 +1186,38 @@ export default function App() {
                             {grams(scaleRecipe(session.starter).total)} dough ·
                             saved on this device
                           </p>
+                          {session.legacyLoaves && (
+                            <details className="legacy-progress">
+                              <summary>
+                                Progress saved from the previous loaf view
+                              </summary>
+                              <p>
+                                These are your original records. The bake
+                                checklist marks a step complete only when every
+                                loaf had completed it.
+                              </p>
+                              {session.legacyLoaves.map((loaf, index) => (
+                                <div key={index}>
+                                  <strong>
+                                    Loaf {index + 1} ·{" "}
+                                    {steps[loaf.current].title}
+                                  </strong>
+                                  <p>
+                                    {loaf.completed.length
+                                      ? loaf.completed
+                                          .map(
+                                            (id) =>
+                                              steps.find(
+                                                (step) => step.id === id,
+                                              )?.title,
+                                          )
+                                          .join(", ")
+                                      : "No individual steps completed yet."}
+                                  </p>
+                                </div>
+                              ))}
+                            </details>
+                          )}
                           <label className="lock-control">
                             <Icon
                               name={session.locked ? "lock" : "unlock"}
@@ -1115,12 +1229,11 @@ export default function App() {
                               checked={session.locked}
                               onChange={(e) =>
                                 setState((s) => ({
-                                  ...s,
-                                  starter: String(s.session!.starter),
-                                  session: {
-                                    ...s.session!,
+                                  ...updateActive(s, (current) => ({
+                                    ...current,
                                     locked: e.target.checked,
-                                  },
+                                  })),
+                                  starter: String(session.starter),
                                 }))
                               }
                             />
@@ -1177,7 +1290,16 @@ export default function App() {
                         <Icon name="timer" />
                       </div>
                       <TimerControl
-                        step={steps.find((s) => s.id === t.id)!}
+                        step={
+                          availableTimers.find((s) => s.id === t.id) ?? {
+                            id: t.id,
+                            day: 1,
+                            title: t.label,
+                            text: "",
+                            timerLabel: t.label,
+                            minutes: t.durationMs / 60000,
+                          }
+                        }
                         timer={t}
                         {...timerProps}
                       />
@@ -1211,7 +1333,7 @@ export default function App() {
               </button>
               {showTimerChoices && (
                 <div className="timer-grid">
-                  {steps
+                  {availableTimers
                     .filter(
                       (s) =>
                         s.minutes && !state.timers.some((t) => t.id === s.id),
@@ -1274,11 +1396,57 @@ export default function App() {
           <span>SOURDOUGH COMPANION</span>
         </footer>
       </div>
+      {modal === "new-bake" && (
+        <Modal title="Start another bake" close={() => setModal(null)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const amount = parseAmount(newStarter);
+              if (amount !== null && newName.trim()) addBake(amount, newName);
+            }}
+          >
+            <p>Your current bakes will keep their progress and timers.</p>
+            <label className="bake-name" htmlFor="bake-name">
+              Bake name
+              <input
+                id="bake-name"
+                value={newName}
+                maxLength={60}
+                required
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </label>
+            <AmountInput
+              id="new-bake-starter"
+              label="Active starter for this bake"
+              value={newStarter}
+              setValue={setNewStarter}
+            />
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setModal(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary"
+                type="submit"
+                disabled={parseAmount(newStarter) === null || !newName.trim()}
+              >
+                Start bake
+                <Icon name="arrow" size={18} />
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
       {modal === "reset" && (
         <Modal title="Start fresh?" close={() => setModal(null)}>
           <p>
-            This clears your baking checkmarks and all timers. Your recipe
-            amount and feeding settings will stay saved.
+            This removes {selectedSession?.name} and its timers. Other bakes and
+            their progress will stay saved.
           </p>
           <div className="dialog-actions">
             <button className="secondary" onClick={() => setModal(null)}>
@@ -1287,9 +1455,9 @@ export default function App() {
             <button
               className="primary"
               onClick={() => {
-                setState((s) => ({ ...s, session: null, timers: [] }));
+                setState(removeActive);
                 setModal(null);
-                setNotice("Baking session reset. Ready for a fresh loaf.");
+                setNotice("Bake removed. Your other sessions are unchanged.");
                 go("home");
               }}
             >
