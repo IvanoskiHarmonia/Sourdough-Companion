@@ -165,6 +165,13 @@ export function recipeSteps(starter: number, loafCount?: number): Step[] {
       text: "Turn the cold dough onto parchment paper. Score the top with a bread lame or sharp blade, then carefully lower it into the hot Dutch oven.",
     },
     {
+      id: "steambath",
+      day: 2,
+      title: "Use Steam Bath technique",
+      text: `Before adding the Dutch Oven in the oven, add a short sheet pan and add 500ml - 1000ml of water to it to generate steam and humidify the oven, this produces more even heat distribution.`,
+      tip: "Use Steam Bath especially if you get burnt bottom.",
+    },
+    {
       id: "covered",
       day: 2,
       title: "Bake with the lid on",

@@ -4,3 +4,7 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 .DS_Store
+
+
+# random stuff
+WHAT_TO_IMPLEMENT.md

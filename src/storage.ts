@@ -23,7 +23,7 @@ export type SavedState = {
 };
 export const initialState: SavedState = {
   version: 2,
-  starter: "250",
+  starter: "50",
   feedAmount: "50",
   feedMode: "existing",
   sessions: [],
@@ -209,7 +209,7 @@ export function loadState(): SavedState {
       starter:
         typeof s.starter === "string" && parseAmount(s.starter) !== null
           ? s.starter
-          : "250",
+          : initialState.starter,
       feedAmount:
         typeof s.feedAmount === "string" && parseAmount(s.feedAmount) !== null
           ? s.feedAmount

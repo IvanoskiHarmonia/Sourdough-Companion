@@ -181,6 +181,8 @@ test("50 g and 100 g bakes keep independent progress, quantities and timers offl
   });
   await page.getByLabel("How much active starter do you have?").fill("50");
   await page.getByRole("button", { name: "Let’s bake" }).click();
+  // Session IDs stay stable when recipe steps or progress labels change.
+  const firstBakeId = await page.getByLabel("Your bakes").inputValue();
   await page.getByRole("button", { name: "Start timer" }).click();
   await page.getByLabel("I’ve completed this step").check();
   await page.getByRole("button", { name: "Next step" }).click();
@@ -192,6 +194,8 @@ test("50 g and 100 g bakes keep independent progress, quantities and timers offl
   ).toBeDisabled();
   await page.getByLabel("Active starter for this bake").fill("100");
   await page.getByRole("button", { name: "Start bake", exact: true }).click();
+  const secondBakeId = await page.getByLabel("Your bakes").inputValue();
+  expect(secondBakeId).not.toBe(firstBakeId);
   await expect(
     page.getByRole("heading", { name: "Wake up your starter" }),
   ).toBeVisible();
@@ -202,9 +206,7 @@ test("50 g and 100 g bakes keep independent progress, quantities and timers offl
   await expect(
     page.getByRole("heading", { name: "Let the dough rest" }),
   ).toBeVisible();
-  await page
-    .getByLabel("Your bakes")
-    .selectOption({ label: "Bake 1 · 50 g starter · 1/17 complete" });
+  await page.getByLabel("Your bakes").selectOption(firstBakeId);
   await expect(
     page.getByRole("heading", { name: "Starter, meet water" }),
   ).toBeVisible();
@@ -215,9 +217,7 @@ test("50 g and 100 g bakes keep independent progress, quantities and timers offl
   await expect(
     page.getByLabel("How much active starter do you have?"),
   ).toHaveValue("50");
-  await page
-    .getByLabel("Your bakes")
-    .selectOption({ label: "Bake 2 · 100 g starter · 0/17 complete" });
+  await page.getByLabel("Your bakes").selectOption(secondBakeId);
   await expect(
     page.getByLabel("How much active starter do you have?"),
   ).toHaveValue("100");

@@ -684,7 +684,7 @@ export default function App() {
                     disabled={!!selectedSession?.locked}
                   />
                   <div className="quick-amounts">
-                    {[125, 150, 250, 500].map((g) => (
+                    {[50, 100, 150, 250].map((g) => (
                       <button
                         key={g}
                         disabled={!!selectedSession?.locked}
