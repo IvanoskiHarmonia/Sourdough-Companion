@@ -148,6 +148,7 @@ test("screens have no serious accessibility violations in both themes", async ({
       "Full recipe",
       "Cooking mode",
       "Your timers",
+      "Baking schedule",
     ]) {
       await page.getByRole("link", { name: label, exact: true }).click();
       const results = await new AxeBuilder({ page })
@@ -260,5 +261,55 @@ test("50 g and 100 g bakes keep independent progress, quantities and timers offl
   await expect(
     page.getByRole("heading", { name: "Bake 2 · Starter activation" }),
   ).toHaveCount(0);
+  await context.setOffline(false);
+});
+
+test("baking schedule calculates next-day milestones and recovers offline", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: /Feeding your starter\? Plan your day/ })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "When will my dough be ready?" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("When will you feed your starter?")
+    .fill("2026-11-13T18:00");
+  const lastFold = page.getByRole("region", { name: "Last fold estimate" });
+  const fridge = page.getByRole("region", { name: "Refrigeration estimate" });
+  await expect(lastFold).toContainText("1:05 AM");
+  await expect(lastFold).toContainText("Sat, Nov 14");
+  await expect(fridge).toContainText("5:20 AM");
+  await page.getByText("Adjust timing estimates", { exact: true }).click();
+  await page.getByLabel("Starter activation (hours)").fill("2");
+  await expect(lastFold).toContainText("11:05 PM");
+  await expect(lastFold).toContainText("Fri, Nov 13");
+  await page.getByLabel("Starter activation (hours)").fill("-1");
+  await expect(page.getByRole("alert")).toContainText(
+    "Enter a valid feeding date",
+  );
+  await expect(lastFold).toHaveCount(0);
+  await page.getByLabel("Starter activation (hours)").fill("2");
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
+    .toBe(true);
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByLabel("When will you feed your starter?")).toHaveValue(
+    "2026-11-13T18:00",
+  );
+  await expect(lastFold).toContainText("11:05 PM");
+  await expect(fridge).toContainText("3:20 AM");
+  await expect(page.locator("body")).toHaveJSProperty(
+    "scrollWidth",
+    await page.evaluate(() => innerWidth),
+  );
   await context.setOffline(false);
 });

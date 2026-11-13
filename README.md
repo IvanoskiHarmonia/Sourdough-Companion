@@ -32,7 +32,7 @@ Open `http://localhost:4173`. The production build is in `dist/`. `vite preview`
 - Live scaling from 250 g active starter, 725 g water, 1,000 g bread flour, and 25 g salt. Fractional input is accepted, including a decimal comma; zero, negatives, nonnumeric text, and amounts above 100,000 g are rejected.
 - Full-precision JavaScript number calculations, with no intermediate rounding. Display quantities use up to three decimal places; `≈` marks a rounded display. A tiny positive quantity can consequently display `≈ 0 g` and is impractical for a kitchen scale.
 - Separate 1:1:1 feeding calculations, based on either existing starter or desired fed starter. Fed starter still needs time to become active.
-- A two-day recipe with scaled quantities in every ingredient instruction. The four fold rounds are expanded into separate screens, for 17 steps from feeding through cooling in each independent bake. The recipe follows the supplied written brief; no original video was supplied for independent comparison.
+- A two-day recipe with scaled quantities in every ingredient instruction. The four fold rounds are expanded into separate screens, for 18 steps from feeding through cooling in each independent bake. The recipe follows the supplied written brief; no original video was supplied for independent comparison.
 - Independent baking sessions: start a 50 g starter bake, then tap **Add bake** to start another with 100 g (or any valid amount). Each named bake has its own complete recipe, current step, checkmarks, recipe lock, and timers. Switch with **Your bakes**; the calculator and full recipe follow the selected session. All sessions save locally and recover offline. Reset removes only the selected bake and its timers; the others keep running.
 - Saved cooking position, completion checkmarks, and recipe lock. New bakes lock automatically. Unlocking allows calculator edits to update the current bake. “Next step” navigates; the checkbox records completion independently.
 - Adjustable activation, rest, fold, bulk, proof, baking, and cooling timers; pause, resume, restart, and removal. Running timers store absolute deadlines. Three 30-minute intervals separate four fold rounds. The default overnight timer is 10 hours within the 8–12-hour range.
@@ -40,6 +40,14 @@ Open `http://localhost:4173`. The production build is in `dist/`. `vite preview`
 - Light/dark themes, keyboard navigation, focus indicators, labeled controls, safe-area padding, mobile bottom navigation, and native confirmation dialogs.
 - Custom 192 px / 512 px icons, maskable icon, 180 px Apple touch icon, standalone manifest, and locally cached app assets.
 - Explicit update prompt. New code only activates when the user chooses “Update now”; progress is saved before reloading.
+
+## Plan your baking day
+
+Open **Plan** (or “Feeding your starter? Plan your day” on Home). Enter the date and local time you feed the starter. The calculator shows when the last fold finishes and when the dough can go into the fridge, with dates for any next-day steps.
+
+Defaults follow the recipe: 4 hours for activation, 1 hour of rest, four folding rounds separated by three 30-minute waits, and 4 hours of bulk fermentation after the folds. The estimate also includes 15 minutes of mixing, 5 minutes per fold round, and 15 minutes of shaping. For an 8:00 AM feed, that gives a last-fold finish around 3:05 PM and refrigeration around 7:20 PM. Expand **Adjust timing estimates** to change activation, bulk fermentation, or hands-on times. Set activation to 0 for starter that is already active.
+
+These are planning estimates: starter and dough readiness decide when to move on. The planner saves its own settings on this device, works offline, and does not start timers or change baking sessions. Times follow the device’s time zone, using elapsed durations across clock changes.
 
 ## Tests
 
@@ -63,7 +71,7 @@ npm run check
 
 On Linux CI, use `npx playwright install --with-deps chromium webkit` to install required browser system libraries. The Playwright config starts the production preview automatically on port 4173. Stop another server on that port first if it serves a different project.
 
-The suite contains 42 unit/component tests and 21 browser tests across the three browser profiles. Accessibility checks scan all five screens in both themes with axe (WCAG A/AA rules); automated checks do not replace manual assistive-technology testing.
+The suite contains 58 unit/component tests and 24 browser tests across the three browser profiles. Accessibility checks scan all six screens in both themes with axe (WCAG A/AA rules); automated checks do not replace manual assistive-technology testing.
 
 Tests cover all four required scaling cases, fractional precision, invalid inputs, both feed modes, updated recipe text, storage recovery and failures, cooking persistence and locking, reset confirmation, mobile navigation, timer reload/pause/resume/expiry, theme persistence, independent 50 g / 100 g recipes and progress, concurrent per-session timers, removal of one session without affecting another, legacy-session migration, and real service-worker offline reloads. Failure artifacts are in `test-results/`; open a trace with `npx playwright show-trace path/to/trace.zip`.
 
@@ -148,8 +156,9 @@ A timer’s deadline survives app suspension and closing; it is recalculated on 
 
 - `src/recipe.ts`: shared calculations, formatting, loaf guidance, and all recipe instructions.
 - `src/baking.ts`: independent session creation, navigation, completion, and session-specific timer identities.
+- `src/schedule.ts` and `src/BakingSchedule.tsx`: local-time baking planner, adjustable timing estimates, and saved schedule settings.
 - `src/storage.ts`: versioned persistence, data validation, and timestamp timer functions.
-- `src/App.tsx`: five screens, navigation, reusable controls, session lifecycle, and update handling.
+- `src/App.tsx`: six screens, navigation, reusable controls, session lifecycle, and update handling.
 - `src/Icons.tsx`: original SVG icons and bread illustration; no external image dependencies.
 - `src/styles.css`: responsive design, dark theme, safe-area handling, and accessibility styles.
 - `public/`: committed app icons and Cloudflare headers. `node scripts/icons.mjs` regenerates PNGs from the SVG with Sharp.

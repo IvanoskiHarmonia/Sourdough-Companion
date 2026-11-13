@@ -1,3 +1,4 @@
+import Schedule from "./BakingSchedule";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { BreadArt, Icon, type IconName } from "./Icons";
@@ -30,12 +31,13 @@ import {
   timerSteps,
 } from "./baking";
 
-type Page = "home" | "feeding" | "recipe" | "cooking" | "timers";
+type Page = "home" | "feeding" | "recipe" | "cooking" | "timers" | "schedule";
 const nav: { id: Page; label: string; short: string; icon: IconName }[] = [
   { id: "home", label: "Recipe calculator", short: "Home", icon: "calculator" },
   { id: "feeding", label: "Starter feeding", short: "Feed", icon: "jar" },
   { id: "recipe", label: "Full recipe", short: "Recipe", icon: "book" },
   { id: "cooking", label: "Cooking mode", short: "Bake", icon: "chef" },
+  { id: "schedule", label: "Baking schedule", short: "Plan", icon: "sun" },
   { id: "timers", label: "Your timers", short: "Timers", icon: "timer" },
 ];
 function pageFromHash(): Page {
@@ -602,39 +604,45 @@ export default function App() {
               </button>
             </div>
           )}
-          {state.sessions.length > 0 && page !== "feeding" && (
-            <section className="session-switcher" aria-label="Baking sessions">
-              <div className="session-select">
-                <label htmlFor="active-bake">Your bakes</label>
-                <select
-                  id="active-bake"
-                  value={state.activeSessionId ?? ""}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    setState((s) => ({
-                      ...s,
-                      activeSessionId: id,
-                      starter: String(
-                        s.sessions.find((b) => b.id === id)!.starter,
-                      ),
-                    }));
-                  }}
-                >
-                  {state.sessions.map((bake) => (
-                    <option key={bake.id} value={bake.id}>
-                      {bake.name} · {grams(bake.starter)} starter ·{" "}
-                      {bake.completed.length}/{steps.length} complete
-                    </option>
-                  ))}
-                </select>
-                <p>Each bake has its own recipe, progress, and timers.</p>
-              </div>
-              <button className="secondary" onClick={openNewBake}>
-                <Icon name="plus" size={18} />
-                Add bake
-              </button>
-            </section>
-          )}
+          {state.sessions.length > 0 &&
+            page !== "feeding" &&
+            page !== "schedule" && (
+              <section
+                className="session-switcher"
+                aria-label="Baking sessions"
+              >
+                <div className="session-select">
+                  <label htmlFor="active-bake">Your bakes</label>
+                  <select
+                    id="active-bake"
+                    value={state.activeSessionId ?? ""}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setState((s) => ({
+                        ...s,
+                        activeSessionId: id,
+                        starter: String(
+                          s.sessions.find((b) => b.id === id)!.starter,
+                        ),
+                      }));
+                    }}
+                  >
+                    {state.sessions.map((bake) => (
+                      <option key={bake.id} value={bake.id}>
+                        {bake.name} · {grams(bake.starter)} starter ·{" "}
+                        {bake.completed.length}/{steps.length} complete
+                      </option>
+                    ))}
+                  </select>
+                  <p>Each bake has its own recipe, progress, and timers.</p>
+                </div>
+                <button className="secondary" onClick={openNewBake}>
+                  <Icon name="plus" size={18} />
+                  Add bake
+                </button>
+              </section>
+            )}
+          {page === "schedule" && <Schedule />}
           {page === "home" && (
             <>
               <section className="hero">
@@ -660,6 +668,17 @@ export default function App() {
                 <BreadArt />
                 <span className="handwritten">made with a little love</span>
               </section>
+              <button className="schedule-link" onClick={() => go("schedule")}>
+                <Icon name="sun" size={22} />
+                <span>
+                  <strong>Feeding your starter? Plan your day.</strong>
+                  <small>
+                    Find your last fold time and when to put the dough in the
+                    fridge.
+                  </small>
+                </span>
+                <Icon name="arrow" size={19} />
+              </button>
               <div className="section-heading">
                 <div>
                   <h2>Your perfect proportions</h2>
