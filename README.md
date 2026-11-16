@@ -71,7 +71,7 @@ npm run check
 
 On Linux CI, use `npx playwright install --with-deps chromium webkit` to install required browser system libraries. The Playwright config starts the production preview automatically on port 4173. Stop another server on that port first if it serves a different project.
 
-The suite contains 58 unit/component tests and 24 browser tests across the three browser profiles. Accessibility checks scan all six screens in both themes with axe (WCAG A/AA rules); automated checks do not replace manual assistive-technology testing.
+The suite contains 58 unit/component tests and 30 browser tests across desktop, iPhone 15 Pro portrait, and mobile landscape profiles. Mobile checks cover form containment, navigation touch targets, both themes, and dialogs with reduced viewport height. Accessibility checks scan all six screens in both themes with axe (WCAG A/AA rules); automated checks do not replace manual assistive-technology testing.
 
 Tests cover all four required scaling cases, fractional precision, invalid inputs, both feed modes, updated recipe text, storage recovery and failures, cooking persistence and locking, reset confirmation, mobile navigation, timer reload/pause/resume/expiry, theme persistence, independent 50 g / 100 g recipes and progress, concurrent per-session timers, removal of one session without affecting another, legacy-session migration, and real service-worker offline reloads. Failure artifacts are in `test-results/`; open a trace with `npx playwright show-trace path/to/trace.zip`.
 

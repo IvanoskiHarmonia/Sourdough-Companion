@@ -83,13 +83,15 @@ export default function Schedule() {
       >
         <label className="schedule-start" htmlFor="fed-at">
           When will you feed your starter?
-          <input
-            id="fed-at"
-            type="datetime-local"
-            value={input.fedAt}
-            onChange={(e) => set("fedAt", e.target.value)}
-            aria-describedby="schedule-local-time"
-          />
+          <span className="schedule-date-field">
+            <input
+              id="fed-at"
+              type="datetime-local"
+              value={input.fedAt}
+              onChange={(e) => set("fedAt", e.target.value)}
+              aria-describedby="schedule-local-time"
+            />
+          </span>
         </label>
         <button
           className="secondary"

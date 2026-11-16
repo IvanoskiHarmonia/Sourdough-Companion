@@ -13,10 +13,22 @@ export default defineConfig({
   projects: [
     {
       name: "chromium-mobile",
-      use: { ...devices["iPhone 13"], defaultBrowserType: "chromium" },
+      use: { ...devices["iPhone 15 Pro"], defaultBrowserType: "chromium" },
     },
-    { name: "webkit-mobile", use: { ...devices["iPhone 13"] } },
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    { name: "webkit-mobile", use: { ...devices["iPhone 15 Pro"] } },
+    {
+      name: "webkit-iphone-landscape",
+      testMatch: "**/mobile.spec.ts",
+      use: {
+        ...devices["iPhone 15 Pro landscape"],
+        viewport: { width: 852, height: 393 },
+      },
+    },
+    {
+      name: "desktop",
+      testIgnore: "**/mobile.spec.ts",
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
   webServer: {
     command: "npm run preview -- --port 4173 --strictPort",

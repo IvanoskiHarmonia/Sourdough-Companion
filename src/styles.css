@@ -1449,7 +1449,8 @@ dialog p {
     font-size: 36px;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px),
+  (max-width: 960px) and (max-height: 500px) and (hover: none) {
   .app-shell {
     display: block;
   }
@@ -1457,7 +1458,9 @@ dialog p {
     position: fixed;
     inset: auto 0 0;
     width: 100%;
-    padding: 5px 10px calc(6px + env(safe-area-inset-bottom));
+    padding: 5px max(10px, env(safe-area-inset-right))
+      calc(6px + env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
     border: 0;
     border-top: 1px solid var(--line);
     background: var(--surface);
@@ -1992,7 +1995,8 @@ dialog p {
 .mobile-install {
   display: none;
 }
-@media (max-width: 760px) {
+@media (max-width: 760px),
+  (max-width: 960px) and (max-height: 500px) and (hover: none) {
   .mobile-install {
     display: flex;
     justify-content: center;
@@ -2011,7 +2015,8 @@ dialog p {
   margin-left: 10px;
   color: var(--green);
 }
-@media (max-width: 760px) {
+@media (max-width: 760px),
+  (max-width: 960px) and (max-height: 500px) and (hover: none) {
   .offline-footer {
     margin-left: 0;
     width: 100%;
@@ -2094,7 +2099,8 @@ select:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
-@media (max-width: 760px) {
+@media (max-width: 760px),
+  (max-width: 960px) and (max-height: 500px) and (hover: none) {
   .session-switcher {
     flex-wrap: wrap;
     gap: 12px;
@@ -2152,7 +2158,6 @@ select:focus-visible {
   gap: 12px;
   font-size: 14px;
 }
-.schedule-start input,
 .schedule-fields input {
   font: inherit;
   font-size: 16px;
@@ -2165,9 +2170,52 @@ select:focus-visible {
   min-width: 0;
   max-width: 100%;
 }
-.schedule-start input {
+/* iOS date controls can ignore border-box sizing when padding is on the
+   native control (WebKit 301648). Put decoration on a shrinkable wrapper. */
+.schedule-date-field {
+  display: flex;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+.schedule-date-field:focus-within {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.schedule-start input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 48px;
   box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+}
+.schedule-start input:focus-visible {
+  outline: none;
+}
+.schedule-start input::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.schedule-start input::-webkit-datetime-edit {
+  padding: 0;
 }
 .schedule-inputs > p {
   width: 100%;
@@ -2268,7 +2316,8 @@ select:focus-visible {
 .schedule-timeline h3 {
   margin-bottom: 6px;
 }
-@media (max-width: 760px) {
+@media (max-width: 760px),
+  (max-width: 960px) and (max-height: 500px) and (hover: none) {
   .schedule-start {
     flex-basis: 100%;
   }
@@ -2291,5 +2340,31 @@ select:focus-visible {
   }
   .schedule-fields {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Keep focused fields clear of the tab bar, and keep dialogs usable when
+   Safari reduces the available height for its keyboard. */
+html {
+  scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom));
+}
+dialog {
+  max-height: calc(
+    100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 760px),
+  (max-width: 960px) and (max-height: 500px) and (hover: none) {
+  .session-select select {
+    font-size: 16px;
+  }
+  .schedule-inputs > *,
+  .schedule-start {
+    max-width: 100%;
+  }
+  .schedule-result > strong {
+    overflow-wrap: anywhere;
   }
 }
